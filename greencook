@@ -1,0 +1,83 @@
+import streamlit as st
+
+# Lista aggiornata dei metodi di cottura con base score e consumo al minuto
+metodi_cottura = {
+    "Crudo": {"base_score": 20, "consumo_minuto": 0.0},
+    "Microonde": {"base_score": 18, "consumo_minuto": 0.1},
+    "Vasocottura al microonde": {"base_score": 19, "consumo_minuto": 0.08},
+    "Bollitura": {"base_score": 12, "consumo_minuto": 0.5},
+    "Cottura a vapore": {"base_score": 14, "consumo_minuto": 0.4},
+    "Sottovuoto forno a vapore": {"base_score": 16, "consumo_minuto": 0.3},
+    "Forno tradizionale": {"base_score": 8, "consumo_minuto": 1.0},
+    "Forno ventilato": {"base_score": 10, "consumo_minuto": 0.8},
+    "Griglia/piastra": {"base_score": 13, "consumo_minuto": 0.6},
+    "Padella": {"base_score": 15, "consumo_minuto": 0.5},
+    "Frittura": {"base_score": 6, "consumo_minuto": 1.2},
+    "Pentola a pressione": {"base_score": 17, "consumo_minuto": 0.2},
+    "Cottura lenta (slow cooking)": {"base_score": 9, "consumo_minuto": 0.9},
+    "Friggitrice ad aria": {"base_score": 14, "consumo_minuto": 0.4},
+    "Affumicatura": {"base_score": 11, "consumo_minuto": 0.7},
+}
+
+# Funzione per calcolare il punteggio di sostenibilità
+def calcola_score(ingredienti, acqua_usata):
+    score = 10  # Punteggio iniziale positivo
+
+    for ingr in ingredienti:
+        # Nutrizione e stato
+        grassi, carboidrati, proteine, fibre, stato, vegetale, proteine_vegetali = ingr["nutrizione"]
+
+        # Ponderazione dei nutrienti
+        score += carboidrati * 2
+        score += fibre * 1
+        score += grassi * 0.5
+        score -= proteine * 3  # Penalità proteine animali
+
+        # Bonus per proteine vegetali
+        if proteine_vegetali:
+            score += 5
+
+        # Stato dell'ingrediente
+        if stato == "Refrigerato":
+            score -= 2
+        elif stato == "Surgelato":
+            score -= 5
+        elif stato == "Secco/Disidratato":
+            score -= 10
+
+        # Metodo di cottura
+        metodo_cottura = ingr["cottura"]["metodo"]
+        tempo_cottura = ingr["cottura"]["tempo"]
+
+        base_score = metodi_cottura[metodo_cottura]["base_score"]
+        consumo_minuto = metodi_cottura[metodo_cottura]["consumo_minuto"]
+        
+        # Calcolo del punteggio di cottura
+        cottura_penalita = consumo_minuto * tempo_cottura
+        score += base_score - cottura_penalita
+
+        # Bonus per ingredienti vegetali
+        if vegetale:
+            score += 3
+
+    # Penalità per acqua usata
+    score -= acqua_usata * 2
+
+    # Restituisci il punteggio positivo
+    return max(score, 0)
+
+# Test del calcolo
+ingredienti = [
+    {
+        "nutrizione": (5, 50, 10, 8, "Fresco", True, True),
+        "cottura": {"metodo": "Padella", "tempo": 15},
+    },
+    {
+        "nutrizione": (2, 30, 0, 5, "Secco/Disidratato", True, False),
+        "cottura": {"metodo": "Bollitura", "tempo": 10},
+    },
+]
+
+acqua_usata = 1.5  # Litri
+score_finale = calcola_score(ingredienti, acqua_usata)
+print(f"Score di sostenibilità: {score_finale:.2f}")
